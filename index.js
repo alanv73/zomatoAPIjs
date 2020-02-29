@@ -2,6 +2,7 @@
 const zipApiKey = 'js-dnTQcPjRZVp1iBlDpEt7W4JfRwHrHOdqkFgBFUK7Q53zP5oA9cYkMCXey2ZGCDMU';
 const googleGeoApi = 'AIzaSyBe-Piv9VcT8gCXPp8bMEHdeUSgMxPV4Xw';
 const zomatoKey = '47dd3222c21b713ce2e5eb66331f2f1b';
+let hasGmap = false;
 let restaurantList = [];
 let cityLat;
 let cityLon;
@@ -14,7 +15,6 @@ $('#cuisine').change(() => {
     let selection = $('#cuisine').val();
     let restaurant = $('#restaurant').val();
     getlistOfRestaurants(cityLat, cityLon, selection, restaurant);
-    // $('#cuisine').focus();
     $('#navbarToggleExternalContent').collapse('hide');
 });
 
@@ -99,30 +99,13 @@ async function showRestaurant(index) {
     let restaurant = restaurantArray[index].restaurant;
     console.log(restaurant.id);
 
-    let modal = `<div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">${restaurant.name}</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true" style="font-size: 1.5rem;">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="card float-left mx-4" style="width: 13rem;">
-                                <img src="${restaurant.featured_image || 'placeholder.jpg'}" class="card-img-top" alt="">
-                            </div>
-                            <div class="card border-0" style="font-size: 0.75rem;">
-                                <p>${restaurant.location.address}</p>
-                                <p>${restaurant.phone_numbers}</p>
-                                <p>${restaurant.timings}</p>
-                            </div>
-                            <div id="reviews" class="card-body scroll float-left mt-2" style="font-size: 0.75rem;">
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-
-    $('#single-restaurant').append(modal);
+    $('#single-restaurant').append(buildModal(restaurant));
+    if (!hasGmap) {
+        $('body').append(mapScript(restaurant));
+        hasGmap = true;
+    } else {
+        initMap();
+    }
 
     let reviews = await getReviews(restaurant.id);
     console.log(reviews);
@@ -132,7 +115,9 @@ async function showRestaurant(index) {
     $('#reviews').append(reviewHTML);
 
     reviews.forEach(review => {
-        $('#reviews .list-group').append(makeReviewItem(review));
+        if (review.review.review_text) {
+            $('#reviews .list-group').append(makeReviewItem(review));
+        }
     });
 
     $('#single-restaurant').modal({
@@ -142,15 +127,9 @@ async function showRestaurant(index) {
     });
 }
 
-function makeReviewItem(review) {
-    let reviewItem = `<li class="list-group-item">
-                        <span class="float-right">${review.review.review_time_friendly}</span>
-                        <h6>${review.review.user.name}</h6>
-                        <p>${review.review.review_text}</p>
-                        </li>`;
-
-    return reviewItem;
-}
+$('#single-restaurant').on('hidden.bs.modal', function (e) {
+    $('#single-restaurant').empty();
+})
 
 $('#single-restaurant').on('hide.bs.modal', function (event) {
     $('#single-restaurant').empty();
@@ -167,6 +146,7 @@ async function getlistOfRestaurants(lat = 40.577215, long = -77.594528, cuisine,
     }
 
     $('.spinner-border').toggleClass('d-none');
+
     let zomatoURL = `https://developers.zomato.com/api/v2.1/search?lat=${lat}&lon=${long}&sort=rating&order=desc`;
 
     if (cuisine) {
@@ -240,57 +220,11 @@ async function getLatLng(zip) {
 
 }
 
-// zipcode API requires index.html be served from VS Code Live server (url must be 127.0.0.1)
-// async function getLatLng(zip) {
-//     let lat = '';
-//     let long = '';
-//     let city = '';
-
-//     let zipURL = `https://www.zipcodeapi.com/rest/${zipApiKey}/info.json/${zip}/degrees`;
-
-//     await $.getJSON(zipURL, (json) => {
-//         lat = json.lat;
-//         long = json.lng;
-//         city = json.city;
-//     }).done(() => {
-//         console.log(`lat: ${lat} lon: ${long}`);
-//     }).fail((e) => {
-//         return {
-//             lat: 40.577215,
-//             lng: -77.594528,
-//             city: 'State College'
-//         };
-//     });
-
-//     return {
-//         lat: lat,
-//         lng: long,
-//         city: city
-//     };
-
-// }
-
 function clearCuisines() {
     let dropdown = $('#cuisine');
     dropdown.empty();
     dropdown.append('<option value="">--Select Cuisine--</option>');
     dropdown.val('');
-}
-
-function makeCard(restaurant) {
-    return `<div class="col mb-4">
-                <div class="card h-100" style="width: 18rem;">
-                    <div class="card-block stretched-link text-decoration-none" onclick="showRestaurant(${restaurant.index})">
-                    <img src="${restaurant.featured_image || 'placeholder.jpg'}" class="card-img-top" alt="">
-                    </div>
-                    <div class="card-body">
-                        <span class="badge badge-secondary float-right" style="background-color: #${restaurant.user_rating.rating_color}">${restaurant.user_rating.aggregate_rating}</span>
-                        <h5 class="card-title">${restaurant.name}</h5>
-                        <p class="card-text">${restaurant.location.address}<br />${restaurant.phone_numbers}</p>
-                        <a href="${restaurant.url}" target="_blank" class="btn btn-primary">Link</a>
-                    </div>
-                </div>
-            </div>`;
 }
 
 async function getZomatoJson(endPoint) {
@@ -321,3 +255,118 @@ async function getReviews(resId) {
 
     return results.user_reviews;
 }
+
+function makeCard(restaurant) {
+    return `<div class="col mb-4">
+                <div class="card h-100" style="width: 18rem;">
+                    <div class="card-block stretched-link text-decoration-none" onclick="showRestaurant(${restaurant.index})">
+                    <img src="${restaurant.featured_image || 'placeholder.jpg'}" class="card-img-top" alt="">
+                    </div>
+                    <div class="card-body">
+                        <span class="badge badge-secondary float-right" style="background-color: #${restaurant.user_rating.rating_color}">${restaurant.user_rating.aggregate_rating}</span>
+                        <h5 class="card-title">${restaurant.name}</h5>
+                        <p class="card-text">${restaurant.location.address}<br />${restaurant.phone_numbers}</p>
+                        <p class="card-text">Cuisines: ${restaurant.cuisines}</p>
+                        <p class="card-text">Rating: <span style="color: #${restaurant.user_rating.rating_color}">${restaurant.user_rating.rating_text}</span></p>
+                    </div>
+                </div>
+            </div>`;
+}
+
+function buildModal(restaurant) {
+    let modal = `<div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">${restaurant.name}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true" style="font-size: 1.5rem;">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="card float-left mx-3" style="width: 13rem;">
+                                <img src="${restaurant.featured_image || 'placeholder.jpg'}" class="card-img-top" alt="">
+                            </div>
+                            <div class="card border-0" style="font-size: 0.75rem;">
+                                <div id="map"></div>
+                            </div>
+                            <div id="reviews" class="card-body scroll float-left mt-2" style="font-size: 0.75rem;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    var lat = ${restaurant.location.latitude};
+                    var lng = ${restaurant.location.longitude};
+                </script>`;
+
+    return modal;
+}
+
+function makeReviewItem(review) {
+    let reviewItem = `<li class="list-group-item">
+                        <span class="float-right">${review.review.review_time_friendly}</span>
+                        <h6>${review.review.user.name}</h6>
+                        <p>${review.review.review_text}</p>
+                        </li>`;
+
+    return reviewItem;
+}
+
+function mapScript(restaurant) {
+    let gmap = `<script>
+            var map;
+            var center = { lat: lat, lng: lng };
+            function initMap() {
+                var center = { lat: lat, lng: lng };
+                map = new google.maps.Map(document.getElementById('map'), {
+                    center: center,
+                    zoom: 15,
+                    scrollwheel: true
+                });
+                var contentString = "<strong>${restaurant.name}</strong><p>${restaurant.location.address}</p>";
+                var infowindow = new google.maps.InfoWindow({
+                    content: contentString
+                });
+                var marker = new google.maps.Marker({
+                    position: center,
+                    map: map
+                });
+                marker.addListener('click', function () {
+                    infowindow.open(map, marker);
+                });
+            }
+        </script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBe-Piv9VcT8gCXPp8bMEHdeUSgMxPV4Xw&callback=initMap" async defer></script>`;
+
+    return gmap;
+}
+
+// zipcode API requires index.html be served from VS Code Live server (url must be 127.0.0.1)
+// async function getLatLng(zip) {
+//     let lat = '';
+//     let long = '';
+//     let city = '';
+
+//     let zipURL = `https://www.zipcodeapi.com/rest/${zipApiKey}/info.json/${zip}/degrees`;
+
+//     await $.getJSON(zipURL, (json) => {
+//         lat = json.lat;
+//         long = json.lng;
+//         city = json.city;
+//     }).done(() => {
+//         console.log(`lat: ${lat} lon: ${long}`);
+//     }).fail((e) => {
+//         return {
+//             lat: 40.577215,
+//             lng: -77.594528,
+//             city: 'State College'
+//         };
+//     });
+
+//     return {
+//         lat: lat,
+//         lng: long,
+//         city: city
+//     };
+
+// }
