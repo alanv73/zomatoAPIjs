@@ -9,6 +9,7 @@ let cityLon;
 let restaurantArray;
 
 xhr = new XMLHttpRequest();
+$('#zip').focus();
 
 $('#cuisine').change(() => {
     $('#card-group').empty();
