@@ -268,6 +268,7 @@ function makeCard(restaurant) {
                         <h5 class="card-title">${restaurant.name}</h5>
                         <p class="card-text">${restaurant.location.address}<br />${restaurant.phone_numbers}</p>
                         <p class="card-text">Cuisines: ${restaurant.cuisines}</p>
+                        <p class="card-text">${restaurant.average_cost_for_two ? "Avg cost for 2: " + restaurant.currency + restaurant.average_cost_for_two : ""}</p>
                         <p class="card-text">Rating: <span style="color: #${restaurant.user_rating.rating_color}">${restaurant.user_rating.rating_text}</span></p>
                     </div>
                 </div>
