@@ -1,5 +1,5 @@
 <h1>IT211 JavaScript Final Project</h1>
-<h2><a href="https://alanv73.github.io/zomato/" target="blank">Restaurant Search using Zomato API</a></h2>
+<h2><a href="https://alanv73.github.io/zomato/" target="_blank">Restaurant Search using Zomato API</a></h2>
 
 <a href="https://alanv73.github.io/zomato/" target="_blank">Demo Here</a>
 
